@@ -4,10 +4,10 @@ const {
   generateAccessToken,
   generateRefreshToken,
 } = require("../middleware/jwt");
-const jwt = require("jsonwebtoken");
+// const jwt = require("jsonwebtoken");
 const register = asyncHandler(async (req, res) => {
-  const { email, password, firstname, lastname } = req.body;
-  if (!email || !password || !lastname || !firstname)
+  const { username, email, password, firstname, lastname } = req.body;
+  if (!email || !password || !lastname || !firstname || !username)
     return res.status(400).json({
       sucess: false,
       message: "Missing input",
@@ -24,16 +24,16 @@ const register = asyncHandler(async (req, res) => {
 });
 //Access token : Xác thực ng dùng , phân quyền ng dùng
 const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password)
+  const { username, password } = req.body;
+  if (!username || !password)
     return res.status(400).json({
       sucess: false,
       message: "Missing input",
     });
-  const response = await User.findOne({ email });
+  const response = await User.findOne({ username });
   if (response && (await response.isCorrectPassword(password))) {
     // tách paswd , role ra khỏi response
-    const { password, role, refreshToken, ...userData } = response.toObject();
+    const { password, role, refreshToken, ...user } = response.toObject();
     const accessToken = generateAccessToken(response._id, role);
     const newRefreshToken = generateRefreshToken(response._id);
     // Lưu refesh token vào db
@@ -50,67 +50,67 @@ const login = asyncHandler(async (req, res) => {
     return res.status(200).json({
       sucess: true,
       accessToken,
-      userData,
+      user,
     });
   } else {
     throw new Error("Invalid credentials");
   }
 });
-const getCurrent = asyncHandler(async (req, res) => {
+const getUser = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const user = await User.findById(_id)
     .select("-refreshToken -password -role")
     .populate({
       path: "cart",
       populate: {
-        path: "product",
-        select: "title thumb price",
+        path: "course",
+        select: "title image price",
       },
     });
   return res.status(200).json({
     success: user ? true : false,
-    rs: user ? user : "User not found",
+    data: user ? user : "User not found",
   });
 });
-const refreshAccessToken = asyncHandler(async (req, res) => {
-  //Lấy token từ cookies
-  const cookie = req.cookies;
-  // Check xem có token không
-  if (!cookie && !cookie.refreshToken)
-    throw new Error("No refresh token in cookies");
-  // Check token có hợp lệ hay không
-  const rs = await jwt.verify(cookie.refreshToken, process.env.JWT_SECRET);
-  const response = await User.findOne({
-    _id: rs._id,
-    refreshToken: cookie.refreshToken,
-  });
-  return res.status(200).json({
-    sucess: response ? true : false,
-    newAccessToken: response
-      ? generateAccessToken(response._id, response.role)
-      : "Refresh token not matched",
-  });
-});
-const logout = asyncHandler(async (req, res) => {
-  const cookie = req.cookies;
-  if (!cookie || !cookie.refreshToken)
-    throw new Error("No refreshToken in cookies");
-  // Xóa refreshToken trong db
-  await User.findOneAndUpdate(
-    { refreshToken: cookie.refreshToken },
-    { refreshToken: "" },
-    { new: true }
-  );
-  // Xóa ở cookie
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: true,
-  });
-  return res.status(200).json({
-    success: true,
-    mes: "Logout is done",
-  });
-});
+// const refreshAccessToken = asyncHandler(async (req, res) => {
+//   //Lấy token từ cookies
+//   const cookie = req.cookies;
+//   // Check xem có token không
+//   if (!cookie && !cookie.refreshToken)
+//     throw new Error("No refresh token in cookies");
+//   // Check token có hợp lệ hay không
+//   const rs = await jwt.verify(cookie.refreshToken, process.env.JWT_SECRET);
+//   const response = await User.findOne({
+//     _id: rs._id,
+//     refreshToken: cookie.refreshToken,
+//   });
+//   return res.status(200).json({
+//     sucess: response ? true : false,
+//     newAccessToken: response
+//       ? generateAccessToken(response._id, response.role)
+//       : "Refresh token not matched",
+//   });
+// });
+// const logout = asyncHandler(async (req, res) => {
+//   const cookie = req.cookies;
+//   if (!cookie || !cookie.refreshToken)
+//     throw new Error("No refreshToken in cookies");
+//   // Xóa refreshToken trong db
+//   await User.findOneAndUpdate(
+//     { refreshToken: cookie.refreshToken },
+//     { refreshToken: "" },
+//     { new: true }
+//   );
+//   // Xóa ở cookie
+//   res.clearCookie("refreshToken", {
+//     httpOnly: true,
+//     secure: true,
+//   });
+//   return res.status(200).json({
+//     success: true,
+//     mes: "Logout is done",
+//   });
+// });
 const getUsers = asyncHandler(async (req, res) => {
   const queries = { ...req.query };
   //Tách các trường db ra khỏi query
@@ -189,8 +189,8 @@ const deleteUser = asyncHandler(async (req, res) => {
 });
 const updateUser = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const { firstname, lastname, email, mobile } = req.body;
-  const data = { firstname, lastname, email, mobile };
+  const { firstname, lastname, skill, mobile, address } = req.body;
+  const data = { firstname, lastname, mobile, skill, address };
   if (req.file) data.avatar = req.file.path;
   if (!_id || Object.keys(req.body).length === 0)
     throw new Error("Missing input");
@@ -199,7 +199,7 @@ const updateUser = asyncHandler(async (req, res) => {
   }).select("-password -role -refreshToken");
   return res.status(200).json({
     sucess: response ? true : false,
-    updated: response ? response : "Something wrong",
+    data: response ? response : "Something wrong",
   });
 });
 const updateUserByAdmin = asyncHandler(async (req, res) => {
@@ -215,78 +215,72 @@ const updateUserByAdmin = asyncHandler(async (req, res) => {
 });
 const updateCart = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const { pid, quantity = 1, color, price } = req.body;
-  if (!pid || !quantity) throw new Error("Missing");
+  const { cid, quantity = 1 } = req.body;
+  if (!cid || !quantity) throw new Error("Missing");
   const user = await User.findById(_id).select("cart");
-  const alreadyProduct = user?.cart?.find(
-    (el) => el.product.toString() === pid && el.color === color
-  );
-  if (alreadyProduct) {
+  const alreadyCart = user?.cart?.find((el) => el.course.toString() === cid);
+  if (alreadyCart) {
     const response = await User.updateOne(
       {
-        cart: { $elemMatch: alreadyProduct },
+        cart: { $elemMatch: alreadyCart },
       },
-      { $set: { "cart.$.quantity": quantity, "cart.$.price": price } }
+      {
+        $set: {
+          "cart.$.quantity": quantity,
+        },
+      }
     );
     return res.status(200).json({
       sucess: response ? true : false,
-      updated: response ? response : "Something wrong",
+      data: response ? response : "Something wrong",
     });
   } else {
     const response = await User.findByIdAndUpdate(
       _id,
       {
-        $push: { cart: { product: pid, quantity, color, price } },
+        $push: { cart: { course: cid, quantity } },
       },
       { new: true }
     );
     return res.status(200).json({
       sucess: response ? true : false,
-      updated: response ? response : "Something wrong",
+      data: response ? response : "Something wrong",
     });
   }
 });
-const removeProduct = asyncHandler(async (req, res) => {
+const removeCourse = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const { pid, color } = req.params;
-  const user = await User.findById(_id).select("cart");
-  const alreadyProduct = user?.cart?.find(
-    (el) => el.product.toString() === pid && el.color === color
-  );
-  if (!alreadyProduct) {
-    return res.status(200).json({
-      sucess: true,
-      updated: "update your cart",
-    });
-  }
+  const { cid, quantity } = req.body;
+  // const user = await User.findById(_id).select("cart");
+  // const alreadyCart = user?.cart?.find((el) => el.course.toString() === cid);
+  // if (!alreadyCart) {
+  //   return res.status(200).json({
+  //     sucess: true,
+  //     data: "update your cart",
+  //   });
+  // }
   const response = await User.findByIdAndUpdate(
     _id,
     {
-      $pull: { cart: { product: pid, color } },
+      $pull: { cart: { course: cid, quantity } },
     },
     { new: true }
   );
   return res.status(200).json({
     sucess: response ? true : false,
-    updated: response ? response : "Something wrong",
-  });
-});
-const test = asyncHandler(async (req, res) => {
-  return res.status(200).json({
-    sucess: true,
+    data: response ? response : "Something wrong",
   });
 });
 module.exports = {
-  // register,
-  // login,
-  // getCurrent,
+  register,
+  login,
+  getUser,
   // refreshAccessToken,
   // logout,
-  // getUsers,
-  // deleteUser,
-  // updateUser,
-  // updateUserByAdmin,
-  // updateCart,
-  // removeProduct,
-  test,
+  getUsers,
+  deleteUser,
+  updateUser,
+  updateUserByAdmin,
+  updateCart,
+  removeCourse,
 };

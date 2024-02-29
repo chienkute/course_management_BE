@@ -3,6 +3,11 @@ const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 var userSchema = new mongoose.Schema(
   {
+    username: {
+      type: String,
+      require: true,
+      unique: true,
+    },
     firstname: {
       type: String,
       required: true,
@@ -21,8 +26,9 @@ var userSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
-      required: true,
-      unique: true,
+    },
+    skill: {
+      type: String,
     },
     password: {
       type: String,
@@ -32,7 +38,13 @@ var userSchema = new mongoose.Schema(
       type: String,
       default: "user",
     },
-    address: String,
+    cart: [
+      {
+        course: { type: mongoose.Types.ObjectId, ref: "Course" },
+        quantity: Number,
+      },
+    ],
+    address: { type: String },
     isBlocked: {
       type: Boolean,
       default: false,
