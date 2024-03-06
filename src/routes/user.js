@@ -1,11 +1,14 @@
 const router = require("express").Router();
 const ctrls = require("../controllers/user");
+const ctrl = require("../controllers/userCourse");
 const { verifyAccessToken, isAdmin } = require("../middleware/verifytoken");
 const uploader = require("../config/cloudinary.config");
 
 router.post("/register", ctrls.register);
 router.post("/login", ctrls.login);
 router.get("/current", verifyAccessToken, ctrls.getUser);
+router.get("/course/:cid", verifyAccessToken, ctrl.getCourseUser);
+router.get("/cart/:cid", verifyAccessToken, ctrl.getCourseCart);
 // router.post("/refreshtoken", ctrls.refreshAccessToken);
 // router.get("/logout", ctrls.logout);
 // router.get("/", [verifyAccessToken, isAdmin], ctrls.getUsers);
