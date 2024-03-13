@@ -29,14 +29,26 @@ var courseSchema = new mongoose.Schema(
     },
     rating_average: {
       type: Number,
+      default: 0,
     },
     rating_count: {
       type: Number,
+      default: 0,
     },
     duration: {
       type: String,
       require: true,
     },
+    ratings: [
+      {
+        star: { type: Number },
+        postedBy: { type: mongoose.Types.ObjectId, ref: "User" },
+        comment: { type: String },
+        updatedAt: {
+          type: Date,
+        },
+      },
+    ],
     chapters: [
       {
         chapter: { type: mongoose.Types.ObjectId, ref: "Chapter" },

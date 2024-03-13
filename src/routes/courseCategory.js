@@ -10,6 +10,11 @@ router.post(
   ctrls.createCategory
 );
 router.get("/", ctrls.getCategories);
-router.put("/:bcid", [verifyAccessToken, isAdmin], ctrls.updateCategory);
+router.put(
+  "/:bcid",
+  [verifyAccessToken, isAdmin],
+  uploader.single("image"),
+  ctrls.updateCategory
+);
 router.delete("/:bcid", [verifyAccessToken, isAdmin], ctrls.deleteCategory);
 module.exports = router;

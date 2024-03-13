@@ -10,9 +10,8 @@ router.get("/current", verifyAccessToken, ctrls.getUser);
 router.get("/course/:cid", verifyAccessToken, ctrl.getCourseUser);
 router.get("/cart/:cid", verifyAccessToken, ctrl.getCourseCart);
 // router.post("/refreshtoken", ctrls.refreshAccessToken);
-// router.get("/logout", ctrls.logout);
-// router.get("/", [verifyAccessToken, isAdmin], ctrls.getUsers);
-// router.delete("/", [verifyAccessToken, isAdmin], ctrls.deleteUser);
+router.get("/", [verifyAccessToken, isAdmin], ctrls.getUsers);
+router.delete("/:uid", [verifyAccessToken, isAdmin], ctrls.deleteUser);
 router.put(
   "/update",
   [verifyAccessToken],
@@ -21,6 +20,6 @@ router.put(
 );
 router.put("/cart", [verifyAccessToken], ctrls.updateCart);
 router.put("/remove", [verifyAccessToken], ctrls.removeCourse);
-// router.put("/:uid", [verifyAccessToken, isAdmin], ctrls.updateUserByAdmin);
+router.put("/:uid", [verifyAccessToken, isAdmin], ctrls.updateUserByAdmin);
 
 module.exports = router;

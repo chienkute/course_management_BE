@@ -1,5 +1,7 @@
 const Course = require("../models/course");
+const Chapter = require("../models/chapter");
 const CourseCategory = require("../models/courseCategory");
+// const UploadVideo = require("../models/uploadvideo");
 const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
 const createCourse = asyncHandler(async (req, res) => {
@@ -15,7 +17,16 @@ const createCourse = asyncHandler(async (req, res) => {
 const getCourse = asyncHandler(async (req, res) => {
   const { cid } = req.params;
   const excludeFields = "title";
-  const course = await Course.findById(cid).populate("category", excludeFields);
+  const course = await Course.findById(cid)
+    .populate("category", excludeFields)
+    .populate({
+      path: "chapters",
+      populate: {
+        path: "chapter",
+        select: "title description lessons",
+      },
+    })
+    .populate("ratings.postedBy", "avatar firstname lastname");
   return res.status(200).json({
     sucess: course ? true : false,
     data: course ? course : "Cannot get",
@@ -110,14 +121,6 @@ const getAllCouse = asyncHandler(async (req, res) => {
     // Filtering
     if (queries?.title || queries?.title === "")
       formatedQueries.title = { $regex: queries.title, $options: "i" };
-    // let queryObject = {};
-    // if (queries?.q) {
-    //   delete formatedQueries.q;
-    //   queryObject = {
-    //     $or: [{ title: { $regex: queries.q, $options: "i" } }],
-    //   };
-    // }
-    // Thêm trường lọc theo tên của Category
     if (queries?.categoryName || queries?.categoryName === "") {
       const categories = await CourseCategory.find({
         title: { $regex: queries.categoryName, $options: "i" },
@@ -178,67 +181,84 @@ const updateCourse = asyncHandler(async (req, res) => {
     data: courseUpdate ? courseUpdate : "Cannot update",
   });
 });
-// const deleteProduct = asyncHandler(async (req, res) => {
-//   const { pid } = req.params;
-//   const deletedProduct = await Product.findByIdAndDelete(pid);
-//   return res.status(200).json({
-//     sucess: deletedProduct ? true : false,
-//     data: deletedProduct ? deletedProduct : "Cannot delete",
-//   });
-// });
-// const ratings = asyncHandler(async (req, res) => {
-//   const { _id } = req.user;
-//   const { star, comment, pid, updatedAt } = req.body;
-//   if (!star || !pid) throw new Error("Missing inputs");
-//   const ratingProduct = await Product.findById(pid);
-//   const alreadyRating = ratingProduct?.ratings?.find(
-//     (el) => el.postedBy.toString() === _id
-//   );
-//   if (alreadyRating) {
-//     // update star && comment
-//     await Product.updateOne(
-//       {
-//         ratings: { $elemMatch: alreadyRating },
-//       },
-//       {
-//         $set: {
-//           "ratings.$.star": star,
-//           "ratings.$.comment": comment,
-//           "ratings.$.updatedAt": updatedAt,
-//         },
-//       },
-//       { new: true }
-//     );
-//   } else {
-//     // add star && comment
-//     await Product.findByIdAndUpdate(
-//       pid,
-//       {
-//         $push: { ratings: { star, comment, postedBy: _id, updatedAt } },
-//       },
-//       { new: true }
-//     );
-//   }
-//   // Sum ratings
-//   const updatedProduct = await Product.findById(pid);
-//   const ratingCount = updatedProduct.ratings.length;
-//   const sumRatings = updatedProduct.ratings.reduce(
-//     (sum, el) => sum + el.star,
-//     0
-//   );
-//   updatedProduct.totalRatings =
-//     Math.round((sumRatings * 10) / ratingCount) / 10;
+const deleteCourse = asyncHandler(async (req, res) => {
+  const { cid } = req.params;
+  const response = await Course.findByIdAndDelete(pid);
+  return res.status(200).json({
+    sucess: response ? true : false,
+    data: response ? response : "Cannot delete",
+  });
+});
+const updateChapter = asyncHandler(async (req, res) => {
+  const { cid } = req.params;
+  const { chid } = req.body;
+  const response = await Course.findByIdAndUpdate(
+    cid,
+    {
+      $push: { chapters: { chapter: chid } },
+    },
+    { new: true }
+  );
+  return res.status(200).json({
+    sucess: response ? true : false,
+    data: response ? response : "Something wrong",
+  });
+});
+const ratings = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { star, comment, cid, updatedAt } = req.body;
+  if (!star || !cid) throw new Error("Missing inputs");
+  const ratingCourse = await Course.findById(cid);
+  const alreadyRating = ratingCourse?.ratings?.find(
+    (el) => el.postedBy.toString() === _id
+  );
+  if (alreadyRating) {
+    // update star && comment
+    await Course.updateOne(
+      {
+        ratings: { $elemMatch: alreadyRating },
+      },
+      {
+        $set: {
+          "ratings.$.star": star,
+          "ratings.$.comment": comment,
+          "ratings.$.updatedAt": updatedAt,
+        },
+      },
+      { new: true }
+    );
+  } else {
+    // add star && comment
+    await Course.findByIdAndUpdate(
+      cid,
+      {
+        $push: { ratings: { star, comment, postedBy: _id, updatedAt } },
+      },
+      { new: true }
+    );
+  }
+  // Sum ratings
+  const updatedCourse = await Course.findById(cid);
+  const ratingCount = updatedCourse.ratings.length;
+  const sumRatings = updatedCourse.ratings.reduce(
+    (sum, el) => sum + el.star,
+    0
+  );
+  updatedCourse.rating_count = Math.round((sumRatings * 10) / ratingCount) / 10;
 
-//   await updatedProduct.save();
+  await updatedCourse.save();
 
-//   return res.status(200).json({
-//     status: true,
-//     updatedProduct,
-//   });
-// });
+  return res.status(200).json({
+    status: true,
+    data: updateCourse ? updatedCourse : "Cannot rating",
+  });
+});
 module.exports = {
   createCourse,
   getCourse,
   getAllCouse,
   updateCourse,
+  updateChapter,
+  ratings,
+  deleteCourse,
 };

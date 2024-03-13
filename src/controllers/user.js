@@ -51,6 +51,7 @@ const login = asyncHandler(async (req, res) => {
       sucess: true,
       accessToken,
       user,
+      role,
     });
   } else {
     throw new Error("Invalid credentials");
@@ -128,16 +129,7 @@ const getUsers = asyncHandler(async (req, res) => {
   // Filtering
   if (queries?.name)
     formatedQueries.name = { $regex: queries.name, $options: "i" };
-  // const query = {};
-  // if (req.query.q) {
-  //   query = {
-  //     $or: [
-  //       { name: { $regex: req.query.q, $options: "i" } },
-  //       { email: { $regex: req.query.q, $options: "i" } },
-  //     ],
-  //   };
-  // }
-  if (req.query.q) {
+  if (req.query.q || req.query.q === "") {
     delete formatedQueries.q;
     formatedQueries["$or"] = [
       { firstname: { $regex: queries.q, $options: "i" } },
@@ -145,7 +137,7 @@ const getUsers = asyncHandler(async (req, res) => {
       { email: { $regex: queries.q, $options: "i" } },
     ];
   }
-  let queryCommand = User.find(q);
+  let queryCommand = User.find(formatedQueries);
 
   //Sorting
   if (req.query.sort) {
@@ -170,7 +162,7 @@ const getUsers = asyncHandler(async (req, res) => {
   queryCommand.exec(async (err, response) => {
     if (err) throw new Error(err.message);
     // Số lượng thỏa mãn đk
-    const counts = await Product.find(q).countDocuments();
+    const counts = await User.find(formatedQueries).countDocuments();
     return res.status(200).json({
       sucess: response ? true : false,
       counts,
@@ -179,12 +171,12 @@ const getUsers = asyncHandler(async (req, res) => {
   });
 });
 const deleteUser = asyncHandler(async (req, res) => {
-  const { _id } = req.query;
-  if (!_id) throw new Error("Missing id");
-  const response = await User.findByIdAndDelete(_id);
+  const { uid } = req.params;
+  if (!uid) throw new Error("Missing id");
+  const response = await User.findByIdAndDelete(uid);
   return res.status(200).json({
     sucess: response ? true : false,
-    deletedUser: response ? "User has been deleted" : "No user been deleted",
+    data: response ? "User has been deleted" : "No user been deleted",
   });
 });
 const updateUser = asyncHandler(async (req, res) => {
@@ -210,7 +202,7 @@ const updateUserByAdmin = asyncHandler(async (req, res) => {
   }).select("-password -role -refreshToken");
   return res.status(200).json({
     sucess: response ? true : false,
-    updated: response ? response : "Something wrong",
+    data: response ? response : "Something wrong",
   });
 });
 const updateCart = asyncHandler(async (req, res) => {
@@ -275,8 +267,6 @@ module.exports = {
   register,
   login,
   getUser,
-  // refreshAccessToken,
-  // logout,
   getUsers,
   deleteUser,
   updateUser,
