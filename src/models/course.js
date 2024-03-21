@@ -37,7 +37,10 @@ var courseSchema = new mongoose.Schema(
     },
     duration: {
       type: String,
-      require: true,
+    },
+    completed: {
+      type: Number,
+      default: 0,
     },
     ratings: [
       {

@@ -2,7 +2,6 @@ const router = require("express").Router();
 const ctrls = require("../controllers/course");
 const { verifyAccessToken, isAdmin } = require("../middleware/verifytoken");
 const uploader = require("../config/cloudinary.config");
-const uploadvideo = require("../config/uploadvideo.config");
 router.post(
   "/",
   [verifyAccessToken, isAdmin],
@@ -11,8 +10,19 @@ router.post(
 );
 router.get("/", ctrls.getAllCouse);
 router.put("/chapter/:cid", [verifyAccessToken, isAdmin], ctrls.updateChapter);
+router.put(
+  "/removechapter/:cid",
+  [verifyAccessToken, isAdmin],
+  ctrls.removeChapter
+);
 router.put("/ratings", [verifyAccessToken], ctrls.ratings);
+router.post("/videos/:cid", [verifyAccessToken], ctrls.countVideoCompelete);
 router.get("/:cid", ctrls.getCourse);
-router.put("/:cid", [verifyAccessToken, isAdmin], ctrls.updateCourse);
-// router.delete("/:bcid", [verifyAccessToken, isAdmin], ctrls.deleteCategory);
+router.put(
+  "/:cid",
+  [verifyAccessToken, isAdmin],
+  uploader.single("image"),
+  ctrls.updateCourse
+);
+router.delete("/:cid", [verifyAccessToken, isAdmin], ctrls.deleteCourse);
 module.exports = router;

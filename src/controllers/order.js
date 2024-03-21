@@ -91,7 +91,11 @@ const getUsersOrder = asyncHandler(async (req, res) => {
   });
 });
 const getOrders = asyncHandler(async (req, res) => {
-  // const response = await Order.find()
+  const response = await Order.find();
+  return res.status(200).json({
+    succes: response ? true : false,
+    data: response ? response : "Cannot get",
+  });
 });
 module.exports = {
   createOrder,

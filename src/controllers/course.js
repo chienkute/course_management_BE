@@ -129,8 +129,17 @@ const getAllCouse = asyncHandler(async (req, res) => {
       formatedQueries.category = { $in: categoryIds };
       delete formatedQueries.categoryName;
     }
+    if (req.query.q || req.query.q === "") {
+      delete formatedQueries.q;
+      formatedQueries["$or"] = [
+        { title: { $regex: queries.q, $options: "i" } },
+      ];
+    }
     // const qr = { ...formatedQueries, ...queryObject };
-    let queryCommand = Course.find(formatedQueries);
+    let queryCommand = Course.find(formatedQueries).populate(
+      "category",
+      "title"
+    );
 
     // Sorting
     if (req.query.sort) {
@@ -183,7 +192,7 @@ const updateCourse = asyncHandler(async (req, res) => {
 });
 const deleteCourse = asyncHandler(async (req, res) => {
   const { cid } = req.params;
-  const response = await Course.findByIdAndDelete(pid);
+  const response = await Course.findByIdAndDelete(cid);
   return res.status(200).json({
     sucess: response ? true : false,
     data: response ? response : "Cannot delete",
@@ -196,6 +205,21 @@ const updateChapter = asyncHandler(async (req, res) => {
     cid,
     {
       $push: { chapters: { chapter: chid } },
+    },
+    { new: true }
+  );
+  return res.status(200).json({
+    sucess: response ? true : false,
+    data: response ? response : "Something wrong",
+  });
+});
+const removeChapter = asyncHandler(async (req, res) => {
+  const { cid } = req.params;
+  const { chid } = req.body;
+  const response = await Course.findByIdAndUpdate(
+    cid,
+    {
+      $pull: { chapters: { chapter: chid } },
     },
     { new: true }
   );
@@ -253,6 +277,19 @@ const ratings = asyncHandler(async (req, res) => {
     data: updateCourse ? updatedCourse : "Cannot rating",
   });
 });
+const countVideoCompelete = asyncHandler(async (req, res) => {
+  const { cid } = req.params;
+  const course = await Course.findById(cid);
+  if (!course) {
+    return res.status(404).json({ error: "Không tìm thấy khóa học" });
+  }
+  course.completed += 1;
+  await course.save();
+  return res.status(200).json({
+    sucess: true,
+    data: course,
+  });
+});
 module.exports = {
   createCourse,
   getCourse,
@@ -261,4 +298,6 @@ module.exports = {
   updateChapter,
   ratings,
   deleteCourse,
+  countVideoCompelete,
+  removeChapter,
 };
