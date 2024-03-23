@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const asyncHandler = require("express-async-handler");
+const bcrypt = require("bcrypt");
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -73,45 +74,6 @@ const getUser = asyncHandler(async (req, res) => {
     data: user ? user : "User not found",
   });
 });
-// const refreshAccessToken = asyncHandler(async (req, res) => {
-//   //Lấy token từ cookies
-//   const cookie = req.cookies;
-//   // Check xem có token không
-//   if (!cookie && !cookie.refreshToken)
-//     throw new Error("No refresh token in cookies");
-//   // Check token có hợp lệ hay không
-//   const rs = await jwt.verify(cookie.refreshToken, process.env.JWT_SECRET);
-//   const response = await User.findOne({
-//     _id: rs._id,
-//     refreshToken: cookie.refreshToken,
-//   });
-//   return res.status(200).json({
-//     sucess: response ? true : false,
-//     newAccessToken: response
-//       ? generateAccessToken(response._id, response.role)
-//       : "Refresh token not matched",
-//   });
-// });
-// const logout = asyncHandler(async (req, res) => {
-//   const cookie = req.cookies;
-//   if (!cookie || !cookie.refreshToken)
-//     throw new Error("No refreshToken in cookies");
-//   // Xóa refreshToken trong db
-//   await User.findOneAndUpdate(
-//     { refreshToken: cookie.refreshToken },
-//     { refreshToken: "" },
-//     { new: true }
-//   );
-//   // Xóa ở cookie
-//   res.clearCookie("refreshToken", {
-//     httpOnly: true,
-//     secure: true,
-//   });
-//   return res.status(200).json({
-//     success: true,
-//     mes: "Logout is done",
-//   });
-// });
 const getUsers = asyncHandler(async (req, res) => {
   const queries = { ...req.query };
   //Tách các trường db ra khỏi query
@@ -243,14 +205,6 @@ const updateCart = asyncHandler(async (req, res) => {
 const removeCourse = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const { cid, quantity } = req.body;
-  // const user = await User.findById(_id).select("cart");
-  // const alreadyCart = user?.cart?.find((el) => el.course.toString() === cid);
-  // if (!alreadyCart) {
-  //   return res.status(200).json({
-  //     sucess: true,
-  //     data: "update your cart",
-  //   });
-  // }
   const response = await User.findByIdAndUpdate(
     _id,
     {
@@ -263,6 +217,30 @@ const removeCourse = asyncHandler(async (req, res) => {
     data: response ? response : "Something wrong",
   });
 });
+const updatePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const { _id } = req.user;
+  const user = await User.findById(_id);
+  bcrypt.compare(oldPassword, user.password, async (err, result) => {
+    if (result === true) {
+      try {
+        const salt = bcrypt.genSaltSync(10);
+        const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+        const response = await User.findByIdAndUpdate(
+          _id,
+          { password: hashedNewPassword },
+          {
+            new: true,
+          }
+        ).select("-password -role -refreshToken");
+        return res.status(200).json({
+          succress: response ? true : false,
+          data: response ? response : "Cannot change",
+        });
+      } catch (e) {}
+    }
+  });
+});
 module.exports = {
   register,
   login,
@@ -273,4 +251,5 @@ module.exports = {
   updateUserByAdmin,
   updateCart,
   removeCourse,
+  updatePassword,
 };

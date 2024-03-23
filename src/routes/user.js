@@ -6,10 +6,10 @@ const uploader = require("../config/cloudinary.config");
 
 router.post("/register", ctrls.register);
 router.post("/login", ctrls.login);
+router.post("/changepassword", [verifyAccessToken], ctrls.updatePassword);
 router.get("/current", verifyAccessToken, ctrls.getUser);
 router.get("/course/:cid", verifyAccessToken, ctrl.getCourseUser);
 router.get("/cart/:cid", verifyAccessToken, ctrl.getCourseCart);
-// router.post("/refreshtoken", ctrls.refreshAccessToken);
 router.get("/", [verifyAccessToken, isAdmin], ctrls.getUsers);
 router.delete("/:uid", [verifyAccessToken, isAdmin], ctrls.deleteUser);
 router.put(

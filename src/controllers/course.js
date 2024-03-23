@@ -201,17 +201,27 @@ const deleteCourse = asyncHandler(async (req, res) => {
 const updateChapter = asyncHandler(async (req, res) => {
   const { cid } = req.params;
   const { chid } = req.body;
-  const response = await Course.findByIdAndUpdate(
-    cid,
-    {
-      $push: { chapters: { chapter: chid } },
-    },
-    { new: true }
+  const course = await Course.findById(cid);
+  const alreadyCart = course?.chapters?.find(
+    (el) => el.chapter.toString() === chid
   );
-  return res.status(200).json({
-    sucess: response ? true : false,
-    data: response ? response : "Something wrong",
-  });
+  if (alreadyCart) {
+    return res.status(200).json({
+      mes: "Already have chapter",
+    });
+  } else {
+    const response = await Course.findByIdAndUpdate(
+      cid,
+      {
+        $push: { chapters: { chapter: chid } },
+      },
+      { new: true }
+    );
+    return res.status(200).json({
+      sucess: response ? true : false,
+      data: response ? response : "Something wrong",
+    });
+  }
 });
 const removeChapter = asyncHandler(async (req, res) => {
   const { cid } = req.params;

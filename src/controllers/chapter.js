@@ -79,11 +79,11 @@ const updateChapter = asyncHandler(async (req, res) => {
 const updateLessons = asyncHandler(async (req, res) => {
   const video = req?.file?.path;
   if (req.body && req.body.title) req.body.slug = slugify(req.body.title);
-  const { title, description, status, chid, slug } = req.body;
+  const { title, chid, slug } = req.body;
   const response = await Chapter.findByIdAndUpdate(
     chid,
     {
-      $push: { lessons: { title, description, video, status, slug } },
+      $push: { lessons: { title, video, slug } },
     },
     { new: true }
   );
@@ -92,8 +92,24 @@ const updateLessons = asyncHandler(async (req, res) => {
     data: response ? response : "Cannot update",
   });
 });
+const deleteLessons = asyncHandler(async (req, res) => {
+  const { chid } = req.params;
+  if (req.body && req.body.title) req.body.slug = slugify(req.body.title);
+  const { title, video, slug } = req.body;
+  const response = await Chapter.findByIdAndUpdate(
+    chid,
+    {
+      $pull: { lessons: { title, video, slug, status: "Not" } },
+    },
+    { new: true }
+  );
+  return res.status(200).json({
+    status: response ? true : false,
+    data: response ? response : "Cannot delete",
+  });
+});
 const getLesson = asyncHandler(async (req, res) => {
-  const { chid } = req.body;
+  const { chid } = req.params;
   const response = await Chapter.find({ _id: chid }).select("lessons");
   return res.status(200).json({
     success: response ? true : false,
@@ -115,4 +131,5 @@ module.exports = {
   deleteChapter,
   updateLessons,
   getLesson,
+  deleteLessons,
 };
